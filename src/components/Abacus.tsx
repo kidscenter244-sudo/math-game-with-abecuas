@@ -53,14 +53,13 @@ export const Abacus: React.FC<AbacusProps> = ({
   const metricsRef = useRef({
     width: 600,
     height: 270,
-    paddingX: 28,
-    paddingY: 18,
+    paddingX: 24,
+    paddingY: 16,
     rodSpacing: 70,
-    beamY: 82,
+    beamY: 62,
     beamHeight: 14,
-    beadHeight: 26,
-    beadWidth: 52,
-    lowerTravel: 38,
+    beadHeight: 24,
+    beadWidth: 50,
   });
 
   const calculateTotal = useCallback((beads: BeadState[]) => {
@@ -86,14 +85,12 @@ export const Abacus: React.FC<AbacusProps> = ({
         b.targetY = b.active ? activeY : restY;
       } else {
         const activeBaseY = m.beamY + m.beamHeight + 2;
-        const inactiveBaseY = m.height - m.paddingY - 6 - (4 * b.height);
-        const lowerInRod = beads.filter(other => other.rodIndex === b.rodIndex && other.deck === 'lower');
-        const activeCount = lowerInRod.filter(other => other.active).length;
+        const bottomBaseY = m.height - m.paddingY - 6 - b.height;
 
         if (b.active) {
           b.targetY = activeBaseY + b.beadIndex * b.height;
         } else {
-          b.targetY = inactiveBaseY + (b.beadIndex + (4 - activeCount) * 0.12) * b.height + m.lowerTravel;
+          b.targetY = bottomBaseY - (3 - b.beadIndex) * b.height;
         }
       }
     }
@@ -106,11 +103,10 @@ export const Abacus: React.FC<AbacusProps> = ({
 
     const availableWidth = w - m.paddingX * 2;
     m.rodSpacing = availableWidth / (rodCount + 0.2);
-    m.beadWidth = Math.min(56, Math.max(32, m.rodSpacing * 0.8));
-    m.beadHeight = compact ? 22 : 26;
+    m.beadWidth = Math.min(54, Math.max(30, m.rodSpacing * 0.8));
+    m.beadHeight = compact ? 20 : 24;
     m.beamHeight = compact ? 12 : 14;
-    m.beamY = m.paddingY + m.beadHeight * 1.55 + 8;
-    m.lowerTravel = m.beadHeight * 1.3;
+    m.beamY = m.paddingY + m.beadHeight * 1.5 + 8;
 
     const newBeads: BeadState[] = [];
     let idCounter = 0;
@@ -137,8 +133,8 @@ export const Abacus: React.FC<AbacusProps> = ({
           beadIndex: j,
           value: 1,
           active: false,
-          currentY: m.beamY + m.beamHeight + 15 + j * m.beadHeight,
-          targetY: m.beamY + m.beamHeight + 15 + j * m.beadHeight,
+          currentY: 0,
+          targetY: 0,
           width: m.beadWidth,
           height: m.beadHeight,
         });
@@ -365,7 +361,7 @@ export const Abacus: React.FC<AbacusProps> = ({
       const rect = containerRef.current.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       const targetWidth = Math.max(320, rect.width);
-      const targetHeight = compact ? 210 : 260;
+      const targetHeight = compact ? 220 : 270;
 
       canvasRef.current.width = targetWidth * dpr;
       canvasRef.current.height = targetHeight * dpr;
