@@ -1,0 +1,611 @@
+
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Math Game with Abacus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    #setup-screen { transform: translateX(-100%); transition: transform 1s ease-in-out; border-radius: 2rem; }
+    #setup-screen.show { transform: translateX(0); }
+    #question-container, #result-container { display: none; }
+    #result-container { justify-content: center; align-items: center; height: 100vh; text-align: center; }
+    #incorrect-questions-container { overflow-y: auto; max-height: 500px; width: 100%; padding-right: 8px; display: none; }
+    #incorrect-questions-container::-webkit-scrollbar { width: 8px; }
+    #incorrect-questions-container::-webkit-scrollbar-thumb { background-color: #C9B194; border-radius: 10px; }
+    #incorrect-questions-container::-webkit-scrollbar-track { background-color: #f1f1f1; }
+    #abacusContainer {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1rem;
+    }
+    #abacusContainer canvas {
+      display: block;
+      position: relative;
+      left: 0 !important;
+      top: 0 !important;
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body class="bg-white h-screen overflow-hidden">
+  <div id="setup-screen" class="w-[70%] h-screen fixed left-0 top-0 bg-[#C9B194] flex flex-col items-center justify-center gap-4 p-6 text-center text-white">
+    <h1 class="text-4xl font-bold mb-4">Kids Center</h1>
+    <div class="row w-full"><input type="number" id="num-digits1" class="input-box w-full py-2 px-4 border border-gray-300 rounded-full text-center text-lg text-black" placeholder="Number of Digits 1"></div>
+    <div class="row w-full"><input type="number" id="num-digits2" class="input-box w-full py-2 px-4 border border-gray-300 rounded-full text-center text-lg text-black" placeholder="Number of Digits 2"></div>
+    <div class="row w-full"><input type="number" id="num-operands" class="input-box w-full py-2 px-4 border border-gray-300 rounded-full text-center text-lg text-black" placeholder="Numbers in Problem"></div>
+    <div class="row w-full"><input type="number" id="num-questions" class="input-box w-full py-2 px-4 border border-gray-300 rounded-full text-center text-lg text-black" placeholder="Number of Questions"></div>
+    <div class="row w-full"><input type="number" id="display-time" class="input-box w-full py-2 px-4 border border-gray-300 rounded-full text-center text-lg text-black" placeholder="Total Time (minutes)"></div>
+
+    <div class="flex items-center justify-center gap-4 mt-4">
+      <button id="circle1" onclick="selectCircle(1)" class="w-12 h-12 rounded-full bg-white text-[#C9B194] font-bold text-xl flex items-center justify-center transition-colors duration-300">1</button>
+      <button id="circle2" onclick="selectCircle(2)" class="w-12 h-12 rounded-full bg-white text-[#C9B194] font-bold text-xl flex items-center justify-center transition-colors duration-300">2</button>
+    </div>
+<div class="row w-full">
+  <input type="text" id="player-name" class="input-box w-full py-2 px-4 border border-gray-300 rounded-full text-center text-lg text-black" placeholder="Enter your name" />
+</div>
+
+    <div class="flex justify-center mt-6">
+      <button id="start-button" class="py-4 px-6 bg-[#C9B194] text-white font-bold text-xl rounded-full hover:bg-[#A89075]" onclick="startGame()">Start Test</button>
+    </div>
+ 
+
+
+  </div>
+
+  <div id="question-container" class="bg-white p-6 rounded-2xl shadow-lg max-w-7xl mx-auto text-center hidden fixed inset-0 flex flex-col items-center justify-start overflow-auto">
+    <div id="timer" class="text-3xl font-bold text-[#C9B194] mt-2">Time Left: 00:00</div>
+    <div class="flex w-full justify-between items-start mt-6 flex-wrap md:flex-nowrap gap-6">
+      <div id="abacusContainer" class="w-full md:w-[48%] border-4 border-black rounded-xl bg-white"></div>
+      <div id="single-question" class="w-full md:w-[48%] text-6xl font-extrabold text-[#C9B194] break-words"></div>
+    </div>
+
+    <!-- Buttons always visible below abacus -->
+    <div class="w-full md:w-[48%] mt-4 flex flex-col gap-4">
+      <button id="reset-abacus-button" class="w-full border-2 border-[#C9B194] text-[#C9B194] py-3 rounded-full text-2xl font-semibold hover:bg-[#C9B194] hover:text-white transition-colors duration-300" onclick="resetAbacus()">Reset Abacus</button>
+      <button id="show-answer-button" class="w-full border-2 border-[#C9B194] text-[#C9B194] py-3 rounded-full text-2xl font-semibold hover:bg-[#C9B194] hover:text-white transition-colors duration-300" onclick="showAnswer()">Show Answer</button>
+    </div>
+
+    <div id="question-screen" class="text-6xl font-extrabold text-[#C9B194] mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4 w-full"></div>
+    <div class="answer-box mt-8 w-full px-6">
+      <input type="number" id="user-answer" class="input-box w-full py-4 px-6 border border-gray-300 rounded-full text-2xl bg-white text-black mb-4" placeholder="Enter your answer" inputmode="numeric" pattern="[0-9\-]*" />
+      <button class="w-full py-4 text-2xl rounded-full bg-[#C9B194] text-white cursor-pointer border-none hover:bg-[#A89075]" onclick="checkAnswer()">Submit</button>
+      <button class="w-full py-4 text-2xl rounded-full bg-gray-400 text-white cursor-pointer border-none hover:bg-gray-500 mt-4" onclick="skipQuestion()">Skip</button>
+    </div>
+    <button id="show-result-button" class="w-full py-4 text-2xl rounded-full bg-[#C9B194] text-white cursor-pointer mt-8 hidden" onclick="showResultButtonClicked()">Submit Answers</button>
+  </div>
+
+  <div id="result-container" class="flex flex-col items-center justify-center hidden p-6">
+    <div class="text-5xl font-bold text-[#C9B194]"><span id="result-text">2/5</span></div>
+    <div class="text-lg text-[#C9B194] mt-4">Your result is shown above.</div>
+    <button id="show-incorrect-questions-button" class="w-full py-4 text-2xl rounded-full bg-[#C9B194] text-white mt-8" onclick="showIncorrectQuestions()">Show Incorrect Questions</button>
+    <button id="back-to-setup" class="w-full py-4 text-2xl rounded-full bg-[#C9B194] text-white mt-4" onclick="backToSetup()">Back to Setup</button>
+    <div id="incorrect-questions-container" class="mt-4"></div>
+  </div>
+
+  <script>
+    function UIElement(x, y, width, height, type, ref, subref, slotType) {
+      this.x = x;
+      this.y = y;
+      this.x2 = x + width;
+      this.y2 = y + height;
+      this.type = type;
+      this.ref = ref;
+    }
+
+    function Bead() {
+      this.position = [0.0, 0.0];
+      this.value = 0;
+      this.active = false;
+      this.uniqueID = -1;
+    }
+
+    function AbacusCtrl(type) {
+      this.type = type;
+      this.beadLines = 8;
+      this.beadPerLine = (this.type == 0) ? 5 : 7;
+      this.beadSep = (this.type == 0) ? 3 : 4;
+      this.beadHeight = 46;
+      this.beadSpacing = 80;
+      this.beadWidth = 70;
+      this.nodes = [];
+
+      this.init = function () {
+        this.nodes.length = 0;
+        var id = 0;
+        for (var i = 0; i < this.beadLines; i++) {
+          for (var j = 0; j < this.beadPerLine; j++) {
+            var bead = new Bead();
+            bead.position[0] = 580 - i * this.beadSpacing;
+            bead.position[1] = 60 + this.beadPerLine * this.beadHeight - j * this.beadHeight;
+            bead.value = 1;
+            if (j > this.beadSep) {
+              bead.position[1] = 60 + this.beadPerLine * this.beadHeight - (j * this.beadHeight + 2 * this.beadHeight);
+              bead.value = 5;
+            }
+            bead.uniqueID = id;
+            this.nodes.push(bead);
+            id++;
+          }
+        }
+      };
+
+      this.getBeadsCount = function () {
+        return this.nodes.length;
+      };
+
+      this.getBeadPositionX = function (nodeId) {
+        return this.nodes[nodeId].position[0];
+      };
+
+      this.getBeadPositionY = function (nodeId) {
+        return this.nodes[nodeId].position[1];
+      };
+
+      this.reset = function () {
+        for (let i = 0; i < this.nodes.length; i++) {
+          if (this.nodes[i].active) {
+            this.activated(i);
+          }
+        }
+      };
+
+      this.activated = function (nodeId) {
+        var line = Math.floor(nodeId / this.beadPerLine);
+        var beadInLine = nodeId - line * this.beadPerLine;
+
+        var active = this.nodes[nodeId].active;
+        this.nodes[nodeId].active = !active;
+
+        var dir = 1;
+        if (beadInLine > this.beadSep) dir = -1;
+
+        var offset = dir * (-1) * this.beadHeight;
+        if (active) offset = dir * this.beadHeight;
+        this.nodes[nodeId].position[1] += offset;
+
+        if (beadInLine <= this.beadSep) {
+          for (var j = 0; j < this.beadPerLine; j++) {
+            var n = line * this.beadPerLine + j;
+            if (j <= this.beadSep && j !== beadInLine) {
+              if ((!active && j > beadInLine) || (active && j < beadInLine)) {
+                if (this.nodes[n].active === active) {
+                  this.nodes[n].position[1] += offset;
+                  this.nodes[n].active = !this.nodes[n].active;
+                }
+              }
+            }
+          }
+        } else {
+          for (var j = 0; j < this.beadPerLine; j++) {
+            var n = line * this.beadPerLine + j;
+            if (j > this.beadSep && j !== beadInLine) {
+              if ((!active && j < beadInLine) || (active && j > beadInLine)) {
+                if (this.nodes[n].active === active) {
+                  this.nodes[n].position[1] += offset;
+                  this.nodes[n].active = !this.nodes[n].active;
+                }
+              }
+            }
+          }
+        }
+      };
+
+      this.resetAllBeads = function () {
+        // Reset all beads to inactive and original positions
+        for (let i = 0; i < this.nodes.length; i++) {
+          if (this.nodes[i].active) {
+            this.activated(i);
+          }
+        }
+      };
+    }
+
+    function Abacus(parentDivId, type) {
+      window.abacusCtrl = new AbacusCtrl(type);
+      const canvas = document.createElement("canvas");
+      let ctx;
+      let uiElements = [];
+      let hooveredBead = -1;
+
+      this.init = function () {
+        abacusCtrl.init();
+        const parent = document.getElementById(parentDivId);
+        canvas.width = 40 + abacusCtrl.beadLines * abacusCtrl.beadSpacing;
+        canvas.height = 60 + (abacusCtrl.beadPerLine + 2) * abacusCtrl.beadHeight;
+        canvas.style.display = "block";
+        parent.appendChild(canvas);
+
+        canvas.addEventListener("mousedown", canvasMouseDown);
+        canvas.addEventListener("mousemove", canvasMouseMove);
+
+        this.update();
+      };
+
+      function canvasMouseDown(e) {
+        const pos = getMouse(e);
+        const found = mouseOverElement(pos);
+        if (found !== -1 && uiElements[found].type === 0) {
+          abacusCtrl.activated(uiElements[found].ref);
+          abacus.update();
+        }
+      }
+
+      function canvasMouseMove(e) {
+        const pos = getMouse(e);
+        hooveredBead = -1;
+        const found = mouseOverElement(pos);
+        if (found !== -1) hooveredBead = uiElements[found].ref;
+        abacus.update();
+      }
+
+      function getMouse(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      }
+
+      function mouseOverElement(pos) {
+        for (let i = 0; i < uiElements.length; i++) {
+          const el = uiElements[i];
+          if (
+            el.x - 10 < pos.x &&
+            el.x2 + 10 > pos.x &&
+            el.y - 10 < pos.y &&
+            el.y2 + 10 > pos.y
+          ) {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      this.update = function () {
+        canvas.width = canvas.width;
+        ctx = canvas.getContext("2d");
+        uiElements = [];
+
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 5;
+
+        // vertical columns
+        for (let i = 0; i < abacusCtrl.beadLines; i++) {
+          const x = -30 + abacusCtrl.beadLines * abacusCtrl.beadSpacing - i * abacusCtrl.beadSpacing;
+          const y = 20 + (abacusCtrl.beadPerLine + 2) * abacusCtrl.beadHeight;
+          ctx.beginPath();
+          ctx.moveTo(x, 20);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
+
+        // horizontal frame lines (middle only)
+        let y = 20 + (abacusCtrl.beadPerLine - abacusCtrl.beadSep) * abacusCtrl.beadHeight;
+        ctx.beginPath();
+        ctx.moveTo(20, y);
+        ctx.lineTo(640, y);
+        ctx.stroke();
+
+        for (let i = 0; i < abacusCtrl.nodes.length; i++) {
+          const bead = abacusCtrl.nodes[i];
+          const marginY = 3;
+          const x = bead.position[0];
+          const y = bead.position[1] + marginY;
+          const width = abacusCtrl.beadWidth;
+          const height = abacusCtrl.beadHeight - marginY * 2;
+
+          const radius = 15;
+
+          ctx.fillStyle = "#C9B194";
+          ctx.strokeStyle = ctx.fillStyle;
+          ctx.lineJoin = "round";
+          ctx.lineWidth = radius;
+          ctx.strokeRect(x + (radius / 2), y + (radius / 2), width - radius, height - radius);
+          ctx.fillRect(x + (radius / 2), y + (radius / 2), width - radius, height - radius);
+
+          const margin = 10;
+          uiElements.push(new UIElement(
+            x - margin,
+            y - margin,
+            width + margin * 2,
+            height + margin * 2,
+            0,
+            i
+          ));
+        }
+
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "center";
+        ctx.font = "20pt sans-serif";
+        const textY = 50 + (abacusCtrl.beadPerLine + 2) * abacusCtrl.beadHeight;
+
+        for (let i = 0; i < abacusCtrl.beadLines; i++) {
+          const textX = -30 + abacusCtrl.beadLines * abacusCtrl.beadSpacing - i * abacusCtrl.beadSpacing;
+          let valueSum = 0;
+          for (let j = 0; j < abacusCtrl.beadPerLine; j++) {
+            const n = i * abacusCtrl.beadPerLine + j;
+            if (abacusCtrl.nodes[n].active) valueSum += abacusCtrl.nodes[n].value;
+          }
+          ctx.fillText(valueSum.toString(10), textX, textY);
+        }
+      };
+    }
+
+    const abacus = new Abacus("abacusContainer", 0);
+    abacus.init();
+    let questions = [], currentQuestionIndex = 0, totalTime = 0, numQuestions = 5, correctAnswers = 0, incorrectAnswers = [];
+    let timerInterval, initialTotalTime = 0, mode = 1;
+
+    function generateQuestions() {
+      questions = [];
+      let digits1 = parseInt(document.getElementById("num-digits1").value) || 1;
+      let digits2 = parseInt(document.getElementById("num-digits2").value) || digits1;
+      let numOperands = parseInt(document.getElementById("num-operands").value) || 2;
+      totalTime = (parseInt(document.getElementById("display-time").value) || 1) * 60;
+      initialTotalTime = totalTime;
+      numQuestions = parseInt(document.getElementById("num-questions").value) || 5;
+
+      for (let i = 0; i < numQuestions; i++) {
+        let numbers = [];
+        for (let j = 0; j < numOperands; j++) {
+          let useDigits1 = j < Math.floor(numOperands / 2);
+          let digits = digits1 === digits2 ? digits1 : (useDigits1 ? digits1 : digits2);
+          let min = Math.pow(10, digits - 1);
+          let max = Math.pow(10, digits) - 1;
+          let num = Math.floor(min + Math.random() * (max - min + 1));
+          numbers.push(num);
+        }
+
+        let subtractionCount = numOperands > 5 ? 2 : 1;
+        let usedIndexes = new Set();
+        for (let s = 0; s < subtractionCount; s++) {
+          let subtractionIndex;
+          do {
+            subtractionIndex = Math.floor(Math.random() * (numOperands - 1)) + 1;
+          } while (usedIndexes.has(subtractionIndex));
+          usedIndexes.add(subtractionIndex);
+          let maxSub = numbers[subtractionIndex - 1];
+          let subNum = Math.floor(Math.random() * maxSub);
+          if (subNum <= 0) subNum = 1;
+          numbers[subtractionIndex] = -subNum;
+        }
+
+        let answer = numbers.reduce((a, b) => a + b, 0);
+        questions.push({ numbers, answer });
+      }
+    }
+
+    function startGame() {
+      document.getElementById("setup-screen").style.display = "none";
+      document.getElementById("question-container").style.display = "flex";
+      document.getElementById("result-container").style.display = "none";
+      currentQuestionIndex = 0;
+      correctAnswers = 0;
+      incorrectAnswers = [];
+      generateQuestions();
+      showQuestion();
+      startTimer();
+    }
+
+    function selectCircle(n) {
+      mode = n;
+      const circles = [document.getElementById('circle1'), document.getElementById('circle2')];
+      circles.forEach((circle, i) => {
+        circle.style.backgroundColor = (i + 1 === n) ? "#C9B194" : "white";
+        circle.style.color = (i + 1 === n) ? "white" : "#C9B194";
+      });
+    }
+
+    // Initialize circle selection on load
+    document.addEventListener('DOMContentLoaded', () => {
+      selectCircle(1);
+      setTimeout(() => document.getElementById("setup-screen").classList.add("show"), 300);
+    });
+
+    function startTimer() {
+      function updateTimerDisplay() {
+        let minutes = Math.floor(totalTime / 60);
+        let seconds = totalTime % 60;
+        document.getElementById("timer").innerText = `Time Left: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+      updateTimerDisplay();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (totalTime <= 0) {
+          clearInterval(timerInterval);
+          endGame();
+        } else {
+          totalTime--;
+          updateTimerDisplay();
+        }
+      }, 1000);
+    }
+
+    function resetAbacus() {
+      if (window.abacusCtrl) {
+        abacusCtrl.resetAllBeads();
+        abacus.update();
+      }
+    }
+
+    function showAnswer() {
+      if (currentQuestionIndex < questions.length) {
+        const answer = questions[currentQuestionIndex].answer;
+        const userAnswerInput = document.getElementById("user-answer");
+        userAnswerInput.value = answer;
+        userAnswerInput.focus();
+      }
+    }
+
+    function showQuestion() {
+      if (window.abacusCtrl) {
+        abacusCtrl.reset();
+        abacus.update();
+      }
+
+      let singleQuestionElement = document.getElementById("single-question");
+      let questionElement = document.getElementById("question-screen");
+      singleQuestionElement.innerHTML = "";
+      questionElement.innerHTML = "";
+
+      if (mode === 1) {
+        document.querySelector('.answer-box').style.display = 'block';
+        document.getElementById("show-result-button").style.display = "none";
+        questionElement.style.display = "none";
+
+        if (currentQuestionIndex >= numQuestions) { endGame(); return; }
+        let question = questions[currentQuestionIndex];
+        singleQuestionElement.innerHTML = question.numbers.join("<br>");
+      } else {
+        document.querySelector('.answer-box').style.display = 'none';
+        document.getElementById("show-result-button").style.display = "block";
+        questionElement.style.display = "grid";
+
+        questions.forEach((q, index) => {
+          let div = document.createElement("div");
+          div.className = "bg-[#C9B194] p-4 rounded-2xl text-white text-2xl flex flex-col items-center";
+          div.innerHTML = `<div>${q.numbers.join("<br>")}</div><input type="number" id="answer-${index}" class="w-24 py-2 px-3 mt-4 text-black rounded-full text-center" inputmode="numeric" pattern="[0-9\-]*">`;
+          questionElement.appendChild(div);
+        });
+      }
+    }
+
+    function checkAnswer() {
+      let userAnswerRaw = document.getElementById("user-answer").value.trim();
+      let userAnswer = userAnswerRaw === '' ? null : parseInt(userAnswerRaw);
+      let correctAnswer = questions[currentQuestionIndex].answer;
+      if (userAnswer === correctAnswer) correctAnswers++;
+      else incorrectAnswers.push({ question: questions[currentQuestionIndex], userAnswer, correctAnswer });
+      currentQuestionIndex++;
+      document.getElementById("user-answer").value = '';
+      showQuestion();
+    }
+
+    function skipQuestion() {
+      // Treat skipped question as incorrect with no answer
+      let correctAnswer = questions[currentQuestionIndex].answer;
+      incorrectAnswers.push({ question: questions[currentQuestionIndex], userAnswer: null, correctAnswer });
+      currentQuestionIndex++;
+      document.getElementById("user-answer").value = '';
+      showQuestion();
+    }
+
+    function showResultButtonClicked() {
+      correctAnswers = 0;
+      incorrectAnswers = [];
+      questions.forEach((q, index) => {
+        let userInput = document.getElementById(`answer-${index}`);
+        if (!userInput) return;
+        let val = userInput.value.trim();
+        if (val === '') {
+          incorrectAnswers.push({ question: q, userAnswer: null, correctAnswer: q.answer });
+          return;
+        }
+        let userAnswer = parseInt(val);
+        if (userAnswer === q.answer) correctAnswers++;
+        else incorrectAnswers.push({ question: q, userAnswer, correctAnswer: q.answer });
+      });
+      endGame();
+    }
+
+    function showIncorrectQuestions() {
+      const container = document.getElementById("incorrect-questions-container");
+      container.innerHTML = '';
+      container.style.display = "grid";
+      container.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 w-full p-4 overflow-y-auto max-h-[500px]";
+      incorrectAnswers.forEach((inc, index) => {
+        let div = document.createElement("div");
+        div.className = "bg-[#C9B194] p-4 rounded-2xl text-white text-2xl flex flex-col items-center";
+        div.innerHTML = `
+          <div>${inc.question.numbers.join('<br>')}</div>
+          <input type="number" class="w-24 py-2 px-3 mt-4 text-black rounded-full text-center" value="${inc.userAnswer !== null ? inc.userAnswer : ''}" disabled>
+          <div class="text-green-200 mt-2 text-center">Correct: ${inc.correctAnswer}</div>
+        `;
+        container.appendChild(div);
+      });
+      document.getElementById("show-incorrect-questions-button").style.display = "none";
+    }
+
+    function backToSetup() {
+      clearInterval(timerInterval);
+      questions = [];
+      currentQuestionIndex = 0;
+      correctAnswers = 0;
+      incorrectAnswers = [];
+      totalTime = initialTotalTime;
+      document.getElementById("user-answer").value = '';
+      document.getElementById("incorrect-questions-container").style.display = "none";
+      document.getElementById("show-incorrect-questions-button").style.display = "block";
+      document.getElementById("result-container").style.display = "none";
+      document.getElementById("setup-screen").style.display = "flex";
+      document.getElementById("question-container").style.display = "none";
+      document.getElementById("single-question").innerHTML = "";
+      document.getElementById("question-screen").innerHTML = "";
+    }
+
+    function showResult(resultMessage) {
+      document.getElementById("question-container").style.display = "none";
+      document.getElementById("result-container").style.display = "flex";
+      document.getElementById("result-text").innerText = resultMessage;
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      showResult(`${correctAnswers}/${numQuestions}`);
+      function sendResultToSheetDB(name, score, total) {
+      fetch("https://sheetdb.io/api/v1/your_api_key", { // غيّر هذا الرابط برابط API الخاص بك
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: {
+            name: name,
+            score: score,
+            total: total
+          }
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Result sent successfully", data);
+      })
+      .catch(error => {
+        console.error("Error sending result", error);
+      });
+    }
+
+    // تعديل دالة endGame لاستدعاء sendResultToSheetDB
+    function endGame() {
+      clearInterval(timerInterval);
+      showResult(`${correctAnswers}/${numQuestions}`);
+
+      let playerName = document.getElementById("player-name").value.trim();
+      if (!playerName) playerName = "Anonymous";
+
+      sendResultToSheetDB(playerName, correctAnswers, numQuestions);
+    }
+    
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        if (document.getElementById("setup-screen").style.display !== "none") {
+          startGame();
+        } else if (document.activeElement.id === "user-answer") {
+          checkAnswer();
+        }
+      }
+    });
+ 
+ </script>
+  <script src="https://www.drv.tw/inc/wd.js?s=z6cnz14ayr0r9zzefgkrfg"></script>
+  <script src="https://www.drv.tw/inc/wd.js?s=afm9ol4v2g6p0rsk7io92w"></script>
+  <script src="https://www.drv.tw/inc/wd.js?s=mpn9rowqwiwczgz9owgvua"></script>
+  <script src="https://www.drv.tw/inc/wd.js?s=yl7zipq6srdhnih9eabkzw"></script>
+<script src="https://www.drv.tw/inc/wd.js?s=yl7zipq6srdhnih9eabkzw"></script><script src="https://www.drv.tw/inc/wd.js?s=gmu29oxtxliys4rcqzavaq"></script></body>
+</html>
