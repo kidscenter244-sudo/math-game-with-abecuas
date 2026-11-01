@@ -34,6 +34,7 @@ export const Abacus: React.FC<AbacusProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
   const [showValues, setShowValues] = useState<boolean>(showValueReadout);
   const [totalValue, setTotalValue] = useState<number>(0);
   const [soundActive, setSoundActive] = useState<boolean>(soundManager.isEnabled());
@@ -357,15 +358,19 @@ export const Abacus: React.FC<AbacusProps> = ({
 
   useEffect(() => {
     const handleResize = () => {
-      if (!containerRef.current || !canvasRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
+      if (!canvasRef.current) return;
       const dpr = window.devicePixelRatio || 1;
-      const targetWidth = Math.max(320, rect.width);
+      const parentWidth =
+        canvasWrapperRef.current?.clientWidth ||
+        (containerRef.current ? containerRef.current.clientWidth - 32 : 400);
+      const maxSorobanWidth = compact ? 460 : 540;
+      const targetWidth = Math.max(280, Math.min(maxSorobanWidth, Math.floor(parentWidth - 6)));
       const targetHeight = compact ? 220 : 270;
 
-      canvasRef.current.width = targetWidth * dpr;
-      canvasRef.current.height = targetHeight * dpr;
+      canvasRef.current.width = Math.floor(targetWidth * dpr);
+      canvasRef.current.height = Math.floor(targetHeight * dpr);
       canvasRef.current.style.width = `${targetWidth}px`;
+      canvasRef.current.style.maxWidth = '100%';
       canvasRef.current.style.height = `${targetHeight}px`;
 
       const ctx = canvasRef.current.getContext('2d');
@@ -443,7 +448,7 @@ export const Abacus: React.FC<AbacusProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative flex flex-col items-center bg-white border border-gray-200 rounded-3xl p-4 shadow-xl select-none transition-all ${className}`}
+      className={`w-full max-w-full relative flex flex-col items-center bg-white border border-gray-200 rounded-3xl p-4 shadow-xl select-none transition-all ${className}`}
     >
       {/* Abacus Top Controls Bar */}
       <div className="w-full flex items-center justify-between px-2 py-1 mb-2 text-xs text-gray-600 font-medium border-b border-gray-100 pb-2">
@@ -487,7 +492,10 @@ export const Abacus: React.FC<AbacusProps> = ({
       </div>
 
       {/* Main Canvas Element */}
-      <div className="relative w-full flex justify-center overflow-hidden rounded-2xl bg-white p-1">
+      <div
+        ref={canvasWrapperRef}
+        className="relative w-full max-w-full flex justify-center overflow-hidden rounded-2xl bg-white p-1"
+      >
         <canvas
           ref={canvasRef}
           onMouseDown={handlePointerDown}

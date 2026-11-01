@@ -152,68 +152,138 @@ function generateSingleQuestion(id: number, settings: GameSettings): QuestionIte
 
       for (let i = 0; i < numOperands; i++) {
         const numDigits = i === 0 ? digits1 : (i % 2 === 1 ? digits2 : digits1);
-        const validNextNumbers: { val: number; isFriend5: boolean }[] = [];
+
+        if (i === 0) {
+          // First number: pick values that allow Friends of 5 formulas in the next step
+          if (numDigits === 1) {
+            const starterDigits = [1, 2, 3, 4, 5, 6, 7, 8];
+            const pick = starterDigits[Math.floor(Math.random() * starterDigits.length)];
+            operands.push(pick);
+            currentVal = pick;
+          } else {
+            let startValStr = '';
+            for (let d = 0; d < numDigits; d++) {
+              const digitCandidates = d === 0 ? [1, 2, 3, 4, 5, 6, 7, 8] : [0, 1, 2, 3, 4, 5, 6, 7, 8];
+              startValStr += digitCandidates[Math.floor(Math.random() * digitCandidates.length)].toString();
+            }
+            const startVal = Math.max(minValForDigits(numDigits), parseInt(startValStr, 10));
+            operands.push(startVal);
+            currentVal = startVal;
+          }
+          continue;
+        }
+
+        const isLastStep = i === numOperands - 1;
+        const mustBeFriend5 = !hasFriendOf5Occurred && isLastStep;
 
         if (numDigits === 1) {
-          for (let candidate = 1; candidate <= 9; candidate++) {
-            if (isFriendOf5Operation(currentVal, candidate, true)) {
-              validNextNumbers.push({ val: candidate, isFriend5: true });
-            } else if (isDirectOperation(currentVal, candidate, true)) {
-              validNextNumbers.push({ val: candidate, isFriend5: false });
+          const f5AddCandidates: number[] = [];
+          const f5SubCandidates: number[] = [];
+          const dirAddCandidates: number[] = [];
+          const dirSubCandidates: number[] = [];
+
+          for (let cand = 1; cand <= 9; cand++) {
+            if (isFriendOf5Operation(currentVal, cand, true)) f5AddCandidates.push(cand);
+            else if (isDirectOperation(currentVal, cand, true)) dirAddCandidates.push(cand);
+
+            if (currentVal >= cand) {
+              if (isFriendOf5Operation(currentVal, cand, false)) f5SubCandidates.push(-cand);
+              else if (isDirectOperation(currentVal, cand, false)) dirSubCandidates.push(-cand);
             }
           }
-          if (currentVal > 0) {
-            for (let candidate = 1; candidate <= 9; candidate++) {
-              if (isFriendOf5Operation(currentVal, candidate, false)) {
-                validNextNumbers.push({ val: -candidate, isFriend5: true });
-              } else if (isDirectOperation(currentVal, candidate, false)) {
-                validNextNumbers.push({ val: -candidate, isFriend5: false });
+
+          const allF5 = [...f5AddCandidates, ...f5SubCandidates];
+          const allDir = [...dirAddCandidates, ...dirSubCandidates];
+
+          let pick: number | null = null;
+          // Heavily prioritize Friend of 5 formula, and enforce it on last step if not occurred yet
+          if (allF5.length > 0 && (!hasFriendOf5Occurred || Math.random() < 0.75)) {
+            pick = allF5[Math.floor(Math.random() * allF5.length)];
+            hasFriendOf5Occurred = true;
+          } else if (!mustBeFriend5 && allDir.length > 0) {
+            pick = allDir[Math.floor(Math.random() * allDir.length)];
+          } else if (allF5.length > 0) {
+            pick = allF5[Math.floor(Math.random() * allF5.length)];
+            hasFriendOf5Occurred = true;
+          }
+
+          if (pick === null) {
+            ok = false;
+            break;
+          }
+
+          operands.push(pick);
+          currentVal += pick;
+        } else {
+          // Multi-digit Friends of 5: assemble digit-by-digit without 10-carries
+          let operandFound = false;
+          const tryAdditionFirst = Math.random() > 0.5 || currentVal < minValForDigits(numDigits);
+          const modesToTry = tryAdditionFirst ? ['add', 'sub'] : ['sub', 'add'];
+
+          for (const mode of modesToTry) {
+            if (operandFound) break;
+            const isAdd = mode === 'add';
+            if (!isAdd && currentVal < minValForDigits(numDigits)) continue;
+
+            const currStr = currentVal.toString().padStart(numDigits, '0');
+            for (let attempt = 0; attempt < 25; attempt++) {
+              let opStr = '';
+              let stepHasF5 = false;
+              let possible = true;
+
+              for (let d = 0; d < numDigits; d++) {
+                const cDigit = parseInt(currStr[d] || '0', 10);
+                const f5Digits: number[] = [];
+                const dirDigits: number[] = [];
+
+                for (let v = 0; v <= 9; v++) {
+                  if (d === 0 && v === 0 && numDigits > 1) continue;
+                  if (isFriendOf5Operation(cDigit, v, isAdd)) f5Digits.push(v);
+                  else if (isDirectOperation(cDigit, v, isAdd)) dirDigits.push(v);
+                }
+
+                let chosenDigit: number | null = null;
+                if (f5Digits.length > 0 && (!hasFriendOf5Occurred || Math.random() < 0.65)) {
+                  chosenDigit = f5Digits[Math.floor(Math.random() * f5Digits.length)];
+                  stepHasF5 = true;
+                } else if (dirDigits.length > 0) {
+                  chosenDigit = dirDigits[Math.floor(Math.random() * dirDigits.length)];
+                } else if (f5Digits.length > 0) {
+                  chosenDigit = f5Digits[Math.floor(Math.random() * f5Digits.length)];
+                  stepHasF5 = true;
+                } else {
+                  possible = false;
+                  break;
+                }
+
+                opStr += chosenDigit.toString();
+              }
+
+              if (possible && opStr.length === numDigits) {
+                const parsedVal = parseInt(opStr, 10);
+                if (parsedVal > 0) {
+                  const finalVal = isAdd ? parsedVal : -parsedVal;
+                  if (currentVal + finalVal >= 0 && (!mustBeFriend5 || stepHasF5 || hasFriendOf5Occurred)) {
+                    operands.push(finalVal);
+                    currentVal += finalVal;
+                    if (stepHasF5) hasFriendOf5Occurred = true;
+                    operandFound = true;
+                    break;
+                  }
+                }
               }
             }
           }
-        } else {
-          for (let tryCount = 0; tryCount < 20; tryCount++) {
-            const min = minValForDigits(numDigits);
-            const max = maxValForDigits(numDigits);
-            const cand = Math.floor(min + Math.random() * (max - min + 1));
-            const lastDigitCand = cand % 10;
-            const lastDigitCurr = currentVal % 10;
 
-            if (isFriendOf5Operation(lastDigitCurr, lastDigitCand, true)) {
-              validNextNumbers.push({ val: cand, isFriend5: true });
-              break;
-            }
-            if (currentVal > cand && isFriendOf5Operation(lastDigitCurr, lastDigitCand, false)) {
-              validNextNumbers.push({ val: -cand, isFriend5: true });
-              break;
-            }
-          }
-          if (validNextNumbers.length === 0) {
-            const cand = Math.floor(minValForDigits(numDigits) + Math.random() * (maxValForDigits(numDigits) - minValForDigits(numDigits) + 1));
-            validNextNumbers.push({ val: cand, isFriend5: false });
+          if (!operandFound) {
+            ok = false;
+            break;
           }
         }
-
-        if (validNextNumbers.length === 0) {
-          ok = false;
-          break;
-        }
-
-        const f5Candidates = validNextNumbers.filter(item => item.isFriend5);
-        let selected: { val: number; isFriend5: boolean };
-        if (f5Candidates.length > 0 && (!hasFriendOf5Occurred || Math.random() < 0.6)) {
-          selected = f5Candidates[Math.floor(Math.random() * f5Candidates.length)];
-          hasFriendOf5Occurred = true;
-        } else {
-          selected = validNextNumbers[Math.floor(Math.random() * validNextNumbers.length)];
-          if (selected.isFriend5) hasFriendOf5Occurred = true;
-        }
-
-        operands.push(selected.val);
-        currentVal += selected.val;
       }
 
-      if (ok && operands.length === numOperands && currentVal >= 0) {
+      // Strictly verify that a Friend of 5 formula actually occurred!
+      if (ok && operands.length === numOperands && currentVal >= 0 && hasFriendOf5Occurred) {
         return {
           id,
           numbers: operands,
@@ -259,6 +329,26 @@ function generateSingleQuestion(id: number, settings: GameSettings): QuestionIte
         };
       }
     }
+  }
+
+  // Guaranteed authentic fallbacks if retry limit reached
+  if (mathMode === 'friends_of_5') {
+    const f5List = [
+      [4, 1], [3, 2], [2, 3], [1, 4],
+      [4, 2], [3, 3], [2, 4], [4, 3],
+      [3, 4], [4, 4],
+      [5, -1], [5, -2], [5, -3], [5, -4],
+      [6, -2], [6, -3], [6, -4],
+      [7, -3], [7, -4],
+      [8, -4],
+    ];
+    const picked = f5List[Math.floor(Math.random() * f5List.length)];
+    return {
+      id,
+      numbers: picked,
+      answer: picked[0] + picked[1],
+      modeExplanation: 'Friends of 5 formulas',
+    };
   }
 
   const fallback = [

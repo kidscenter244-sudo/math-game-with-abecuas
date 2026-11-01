@@ -65,9 +65,10 @@ export const SingleQuestionView: React.FC<SingleQuestionViewProps> = ({
 
       {/* Main Container: Abacus on left/top, Numbers on right */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-8 bg-white border border-gray-100 rounded-3xl p-6 sm:p-8 shadow-xl">
-        {/* Abacus */}
-        <div className="w-full md:w-1/2 flex flex-col items-center">
+        {/* Abacus Column */}
+        <div className="w-full md:w-1/2 min-w-0 max-w-full flex flex-col items-center">
           <Abacus
+            key={questionIndex}
             rodCount={settings.digits1 > 2 || settings.digits2 > 2 ? 9 : 7}
             interactive={true}
             showValueReadout={true}
@@ -75,7 +76,7 @@ export const SingleQuestionView: React.FC<SingleQuestionViewProps> = ({
         </div>
 
         {/* Numbers Column & Answer Inputs */}
-        <div className="w-full md:w-1/2 flex flex-col items-center justify-center">
+        <div className="w-full md:w-1/2 min-w-0 max-w-full flex flex-col items-center justify-center">
           {/* Numbers Display in Column */}
           <div className="w-full min-h-[180px] flex flex-col items-center justify-center py-4 mb-4">
             <div className="flex flex-col items-center font-mono">
